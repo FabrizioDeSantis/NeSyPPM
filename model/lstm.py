@@ -13,9 +13,13 @@ class ModelConfig:
     num_layers: int
     dropout_rate: float = 0.1
     sequence_length: int = 13
-    # sequence_length: int = 13
+    sequence_length: int = 20 # bpi17
+    #sequence_length: int = 40 # bpi12
+    #sequence_length: int = 13 # sepsis
+    #sequence_length: int = 20 # traffic_fines
     learning_rate: float = 0.001
     num_features: int = 4
+    num_epochs: int = 100
 
 class LSTMModel(nn.Module):
     def __init__(self, vocab_sizes: List[int], config: ModelConfig, num_classes: int, feature_names: List[str]):
@@ -28,7 +32,7 @@ class LSTMModel(nn.Module):
             for feature, vocab_size in vocab_sizes.items()
         })
         # lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings) - 1)  # +2 for numerical features
-        # lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings) - 2) bpi12
+        # lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings) - 2) # bpi12/bpi17
         lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings)) # traffic fines
         self.lstm = nn.LSTM(
             input_size=lstm_input_size,
@@ -37,8 +41,6 @@ class LSTMModel(nn.Module):
             batch_first=True,
             dropout=config.dropout_rate
         )
-        self.attention_weight = nn.Linear(config.hidden_size, config.hidden_size)
-        self.attention_combine = nn.Linear(config.hidden_size, 1)
         self.fc = nn.Linear(config.hidden_size, self.num_classes)
         self.sigmoid = nn.Sigmoid()
 
@@ -57,6 +59,7 @@ class LSTMModel(nn.Module):
             embeddings_list.append(self.embeddings[name](feature_data))
             
         #Process numerical features
+        # SEPSIS
         for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
             index = self.feature_names.index(name)
             index = index * seq_len
@@ -94,7 +97,7 @@ class LSTMModel(nn.Module):
         
         output, (hidden, _) = self.lstm(cat)
         last_hidden = hidden[-1]  # Shape: (batch_size, hidden_dim)
-        lengths = (x[:, :13] != 0).sum(1)  # Mask padding
+        lengths = (x[:, :self.config.sequence_length] != 0).sum(1)  # Mask padding
         last_output = output[torch.arange(output.size(0)), lengths - 1]
         # attention = self.attention_combine(torch.tanh(self.attention_weight(output)))
         # attention_weights = F.softmax(attention, dim=1)
@@ -114,7 +117,7 @@ class LSTMModelNext(nn.Module):
             feature: nn.Embedding(vocab_size + 1, config.hidden_size, padding_idx=0)
             for feature, vocab_size in vocab_sizes.items()
         })
-        lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings))  # +2 for numerical features
+        lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings))
         self.lstm = nn.LSTM(
             input_size=lstm_input_size,
             hidden_size=config.hidden_size,
@@ -122,8 +125,6 @@ class LSTMModelNext(nn.Module):
             batch_first=True,
             dropout=config.dropout_rate
         )
-        self.attention_weight = nn.Linear(config.hidden_size, config.hidden_size)
-        self.attention_combine = nn.Linear(config.hidden_size, 1)
         self.fc = nn.Linear(config.hidden_size, self.num_classes)
         self.sigmoid = nn.Sigmoid()
 
@@ -140,13 +141,14 @@ class LSTMModelNext(nn.Module):
             feature_data = x[:, index:end_idx].long()
             embeddings_list.append(self.embeddings[name](feature_data))
             
-        # Process numerical features
-        # for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
-        #     index = self.feature_names.index(name)
-        #     index = index * seq_len
-        #     end_idx = index + seq_len
-        #     feature_data = x[:, index:end_idx]
-        #     numerical_features.append(feature_data)
+        #Process numerical features
+        # sepsis
+        for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
+            index = self.feature_names.index(name)
+            index = index * seq_len
+            end_idx = index + seq_len
+            feature_data = x[:, index:end_idx]
+            numerical_features.append(feature_data)
         # index = self.feature_names.index("case:AMOUNT_REQ")
         # index = index * seq_len
         # end_idx = index + seq_len
@@ -159,13 +161,13 @@ class LSTMModelNext(nn.Module):
         #     end_idx = index + seq_len
         #     feature_data = x[:, index:end_idx]
         #     numerical_features.append(feature_data)
-        # bpi17
-        for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
-            index = self.feature_names.index(name)
-            index = index * seq_len
-            end_idx = index + seq_len
-            feature_data = x[:, index:end_idx]
-            numerical_features.append(feature_data)
+        # # bpi17
+        # for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
+        #     index = self.feature_names.index(name)
+        #     index = index * seq_len
+        #     end_idx = index + seq_len
+        #     feature_data = x[:, index:end_idx]
+        #     numerical_features.append(feature_data)
 
         numerical_features = torch.stack(numerical_features, dim=2)
         output = torch.cat(embeddings_list + [numerical_features], dim=2)
@@ -177,15 +179,15 @@ class LSTMModelNext(nn.Module):
         
         output, (hidden, _) = self.lstm(cat)
         last_hidden = hidden[-1]  # Shape: (batch_size, hidden_dim)
-        # lengths = (x[:, :40] != 0).sum(1)  # Mask padding
-        # last_output = out[torch.arange(out.size(0)), lengths - 1]
-        attention = self.attention_combine(torch.tanh(self.attention_weight(output)))
-        attention_weights = F.softmax(attention, dim=1)
-        context_vector = torch.sum(output * attention_weights, dim=1)
+        lengths = (x[:, :self.config.sequence_length] != 0).sum(1)  # Mask padding
+        last_output = output[torch.arange(output.size(0)), lengths - 1]
+        # attention = self.attention_combine(torch.tanh(self.attention_weight(output)))
+        # attention_weights = F.softmax(attention, dim=1)
+        # context_vector = torch.sum(output * attention_weights, dim=1)
         # return self.sigmoid(self.fc(context_vector))
-        out = self.fc(context_vector)
-        return out
-
+        out = self.fc(last_output)
+        return self.sigmoid(out)
+    
 class LogitsToPredicate(nn.Module):
     def __init__(self, logits_model):
         super(LogitsToPredicate, self).__init__()
@@ -216,8 +218,6 @@ class LSTMModelA(nn.Module):
             batch_first=True,
             dropout=config.dropout_rate
         )
-        self.attention_weight = nn.Linear(config.hidden_size, config.hidden_size)
-        self.attention_combine = nn.Linear(config.hidden_size, 1)
         self.fc = nn.Linear(config.hidden_size, self.num_classes)
         self.sigmoid = nn.Sigmoid()
 
@@ -235,12 +235,13 @@ class LSTMModelA(nn.Module):
             embeddings_list.append(self.embeddings[name](feature_data))
             
         # Process numerical features
-        # for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid', "rule_2"]:
-        #     index = self.feature_names.index(name)
-        #     index = index * seq_len
-        #     end_idx = index + seq_len
-        #     feature_data = x[:, index:end_idx]
-        #     numerical_features.append(feature_data)
+        # sepsis
+        for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid', "rule_2"]:
+            index = self.feature_names.index(name)
+            index = index * seq_len
+            end_idx = index + seq_len
+            feature_data = x[:, index:end_idx]
+            numerical_features.append(feature_data)
         # for name in ["expense", "amount", "paymentAmount"]:
         #     index = self.feature_names.index(name)
         #     index = index * seq_len
@@ -250,16 +251,16 @@ class LSTMModelA(nn.Module):
         # numerical_features.append(x[:, 110:120])
         # numerical_features.append(x[:, 120:130])
         # numerical_features.append(x[:, 130:140])
-        # bpi17
-        for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
-            index = self.feature_names.index(name)
-            index = index * seq_len
-            end_idx = index + seq_len
-            feature_data = x[:, index:end_idx]
-            numerical_features.append(feature_data)
-        numerical_features.append(x[:, 240:260])
-        numerical_features.append(x[:, 260:280])
-        numerical_features.append(x[:, 280:300])
+        # # bpi17
+        # for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
+        #     index = self.feature_names.index(name)
+        #     index = index * seq_len
+        #     end_idx = index + seq_len
+        #     feature_data = x[:, index:end_idx]
+        #     numerical_features.append(feature_data)
+        # numerical_features.append(x[:, 240:260])
+        # numerical_features.append(x[:, 260:280])
+        # numerical_features.append(x[:, 280:300])
 
         numerical_features = torch.stack(numerical_features, dim=2)
         output = torch.cat(embeddings_list + [numerical_features], dim=2)
@@ -271,12 +272,8 @@ class LSTMModelA(nn.Module):
         
         output, (hidden, _) = self.lstm(cat)
         last_hidden = hidden[-1]  # Shape: (batch_size, hidden_dim)
-        # lengths = (x[:, :40] != 0).sum(1)  # Mask padding
-        # last_output = out[torch.arange(out.size(0)), lengths - 1]
-        attention = self.attention_combine(torch.tanh(self.attention_weight(output)))
-        attention_weights = F.softmax(attention, dim=1)
-        context_vector = torch.sum(output * attention_weights, dim=1)
-        # return self.sigmoid(self.fc(context_vector))
-        out = self.fc(context_vector)
+        lengths = (x[:, :self.config.sequence_length] != 0).sum(1)  # Mask padding
+        last_output = output[torch.arange(output.size(0)), lengths - 1]
+        out = self.fc(last_output)
         return self.sigmoid(out)
         #return out
