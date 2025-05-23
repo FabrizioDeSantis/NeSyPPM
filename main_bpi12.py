@@ -11,7 +11,7 @@ from metrics import compute_accuracy, compute_metrics
 from collections import defaultdict, Counter
 from data import preprocess_sepsis
 from data import preprocess_bpi12
-from data.dataset import NeSyDataset, ModelConfig, BPI12Dataset
+from data.dataset import NeSyDataset, ModelConfig
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -22,14 +22,8 @@ warnings.filterwarnings("ignore")
 
 metrics = defaultdict(list)
 
-dataset = "sepsis_2"
-
-if dataset == "sepsis_2":
-    classes = ['No ICU', 'ICU']
-elif dataset == "sepsis_3":
-    classes = ["Release A", "No Release A"]
-elif dataset == "bpi12":
-    classes = ["Not accepted", "Accepted"]
+dataset = "bpi12"
+classes = ["Not accepted", "Accepted"]
 
 metrics_lstm = []
 metrics_ltn = []
@@ -70,11 +64,8 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 print("-- Reading dataset")
 data = pd.read_csv("data_processed/"+dataset+".csv", dtype={"org:resource": str})
 
-if dataset == "sepsis_2":
-    (X_train_, y_train_, X_test, y_test, feature_names), vocab_sizes, scalers = preprocess_sepsis.preprocess_eventlog(data)
-elif dataset == "bpi12":
-    (X_train_, y_train_, X_test, y_test, feature_names), vocab_sizes, scalers = preprocess_bpi12.preprocess_eventlog(data)
 
+(X_train_, y_train_, X_test, y_test, feature_names), vocab_sizes, scalers = preprocess_bpi12.preprocess_eventlog(data)
 X_train, X_val, y_train, y_val = train_test_split(X_train_, y_train_, test_size=0.2, stratify=y_train_, random_state=42)
 
 print("--- Label distribution")
@@ -87,20 +78,12 @@ print(counts)
 
 print(feature_names)
 
-if dataset == "sepsis_2":
-    train_dataset = NeSyDataset(X_train, y_train)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_dataset = NeSyDataset(X_val, y_val)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_dataset = NeSyDataset(X_test, y_test)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-elif dataset == "bpi12":
-    train_dataset = BPI12Dataset(X_train, y_train)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_dataset = BPI12Dataset(X_val, y_val)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_dataset = BPI12Dataset(X_test, y_test)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+train_dataset = NeSyDataset(X_train, y_train)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_dataset = NeSyDataset(X_val, y_val)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+test_dataset = NeSyDataset(X_test, y_test)
+test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names).to(device)
 optimizer = torch.optim.Adam(lstm.parameters(), lr=config.learning_rate)
