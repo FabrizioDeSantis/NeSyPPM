@@ -31,8 +31,6 @@ class LSTMModel(nn.Module):
             feature: nn.Embedding(vocab_size + 1, config.hidden_size, padding_idx=0)
             for feature, vocab_size in vocab_sizes.items()
         })
-        # lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings) - 1)  # +2 for numerical features
-        # lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings) - 2) # bpi12/bpi17
         lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings)) # traffic fines
         self.lstm = nn.LSTM(
             input_size=lstm_input_size,
