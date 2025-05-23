@@ -335,7 +335,9 @@ print("Compliance:", compliance)
 metrics_ltn_B.append(compliance)
 
 # LTN_A
-
+rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
+rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
+rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
 
@@ -347,6 +349,14 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
+        rule_1_res = rule_1(x).detach().cpu().numpy()
+        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_crp_atb_res = rule_crp_atb(x)
+        rule_crp_100_res = rule_crp_100(x)
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         formulas = []
@@ -395,6 +405,14 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
+        rule_1_res = rule_1(x).detach().cpu().numpy()
+        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_crp_atb_res = rule_crp_atb(x)
+        rule_crp_100_res = rule_crp_100(x)
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         x_All = ltn.Variable("x_All", x)
@@ -511,9 +529,17 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
+        x_All = ltn.Variable("x_All", x)
+        rule_1_res = rule_1(x).detach().cpu().numpy()
+        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_crp_atb_res = rule_crp_atb(x)
+        rule_crp_100_res = rule_crp_100(x)
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
-        x_All = ltn.Variable("x_All", x)
         formulas = []
         if x_P.value.numel()>0:
             formulas.extend([
@@ -565,10 +591,18 @@ for epoch in range(args.num_epochs_nesy):
 #for epoch in range(1):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
+        x_All = ltn.Variable("x_All", x)
         optimizer.zero_grad()
+        rule_1_res = rule_1(x).detach().cpu().numpy()
+        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_crp_atb_res = rule_crp_atb(x)
+        rule_crp_100_res = rule_crp_100(x)
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
-        x_All = ltn.Variable("x_All", x)
         formulas = []
         if x_P.value.numel()>0:
             formulas.extend([

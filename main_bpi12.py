@@ -366,6 +366,16 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
+        rule_1_res = f1(x).detach().cpu().numpy()
+        f2_res = f2(x)
+        f3_res = f3(x)
+        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
+        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         formulas = []
@@ -414,6 +424,16 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
+        rule_1_res = f1(x).detach().cpu().numpy()
+        f2_res = f2(x)
+        f3_res = f3(x)
+        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
+        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         x_All = ltn.Variable("x_All", x)
@@ -536,9 +556,19 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
+        x_All = ltn.Variable("x_All", x)
+        rule_1_res = f1(x).detach().cpu().numpy()
+        f2_res = f2(x)
+        f3_res = f3(x)
+        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
+        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
-        x_All = ltn.Variable("x_All", x)
         formulas = []
         if x_P.value.numel()>0:
             formulas.extend([
@@ -592,9 +622,19 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
+        x_All = ltn.Variable("x_All", x)
+        rule_1_res = f1(x).detach().cpu().numpy()
+        f2_res = f2(x)
+        f3_res = f3(x)
+        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
+        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
-        x_All = ltn.Variable("x_All", x)
         formulas = []
         if x_P.value.numel()>0:
             formulas.extend([
