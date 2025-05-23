@@ -123,64 +123,44 @@ for epoch in range(config.num_epochs):
 lstm.eval()
 y_pred = []
 y_true = []
-### SEPSIS RULES
-rule_1 = lambda x: (x[..., 351:364] > scalers["LacticAcid"].transform([[2]])[0][0]).any(dim=1)
-rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
-rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
-rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
-### BPI12 RULES
-# rule_amount_1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
-# rule_amount_2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
-# rule_amount_3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
-# rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
-# rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
+# BPI12 RULES
+rule_amount_1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
+rule_amount_2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
+rule_amount_3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
+rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
+rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
 compliance_lstm = 0
 num_constraints = 0
 for enum, (x, y) in enumerate(test_loader):
     with torch.no_grad():
         x = x.to(device)
         # Apply the rule to the input data
-        if dataset == "sepsis_2":
-            rule_2_res = rule_1(x).detach().cpu().numpy()
-            rule_crp_atb_res = rule_crp_atb(x).detach().cpu().numpy()
-            rule_crp_100_res = rule_crp_100(x).detach().cpu().numpy()
-        elif dataset == "bpi12":
-            rule_amount_1_res = rule_amount_1(x).detach().cpu().numpy()
-            rule_amount_2_res = rule_amount_2(x).detach().cpu().numpy()
-            rule_amount_3_res = rule_amount_3(x).detach().cpu().numpy()
-            rule_resource_1_res = rule_resource_1(x).detach().cpu().numpy()
-            rule_resource_2_res = rule_resource_2(x).detach().cpu().numpy()
+        rule_amount_1_res = rule_amount_1(x).detach().cpu().numpy()
+        rule_amount_2_res = rule_amount_2(x).detach().cpu().numpy()
+        rule_amount_3_res = rule_amount_3(x).detach().cpu().numpy()
+        rule_resource_1_res = rule_resource_1(x).detach().cpu().numpy()
+        rule_resource_2_res = rule_resource_2(x).detach().cpu().numpy()
         outputs = lstm(x).detach().cpu().numpy()
         predictions = np.where(outputs > 0.5, 1., 0.).flatten()
         for i in range(len(y)):
             y_pred.append(predictions[i])
             y_true.append(y[i].cpu())
-            if dataset == "sepsis_2":
-                if rule_2_res[i] == 1 and y[i] == 1:
-                    num_constraints += 1
-                    if predictions[i] == 1:
-                        compliance_lstm += 1
-                if rule_crp_atb_res[i] == 1 and rule_crp_100_res[i] == 1 and y[i] == 1:
-                    num_constraints += 1
-                    if predictions[i] == 1:
-                        compliance_lstm += 1
-            elif dataset == "bpi12":
-                if rule_amount_1_res[i] == 1 and y[i] == 0:
-                    num_constraints += 1
-                    if predictions[i] == 0:
-                        compliance_lstm += 1
-                if rule_amount_2_res[i] == 1 and rule_amount_3_res[i] == 1 and y[i] == 0:
-                    num_constraints += 1
-                    if predictions[i] == 0:
-                        compliance_lstm += 1
-                if rule_resource_1_res[i] == 1 and y[i] == 0:
-                    num_constraints += 1
-                    if predictions[i] == 0:
-                        compliance_lstm += 1
-                if rule_resource_2_res[i] == 1 and y[i] == 0:
-                    num_constraints += 1
-                    if predictions[i] == 0:
-                        compliance_lstm += 1
+            if rule_amount_1_res[i] == 1 and y[i] == 0:
+                num_constraints += 1
+                if predictions[i] == 0:
+                    compliance_lstm += 1
+            if rule_amount_2_res[i] == 1 and rule_amount_3_res[i] == 1 and y[i] == 0:
+                num_constraints += 1
+                if predictions[i] == 0:
+                    compliance_lstm += 1
+            if rule_resource_1_res[i] == 1 and y[i] == 0:
+                num_constraints += 1
+                if predictions[i] == 0:
+                    compliance_lstm += 1
+            if rule_resource_2_res[i] == 1 and y[i] == 0:
+                num_constraints += 1
+                if predictions[i] == 0:
+                    compliance_lstm += 1
 
 print("Metrics LSTM")
 accuracy = accuracy_score(y_true, y_pred)
@@ -318,21 +298,13 @@ def compute_satisfaction_level(loader):
     mean_sat /= len(loader)
     return mean_sat
 
-if dataset == "sepsis_2":
-    f1 = ltn.Function(func=lambda x: (x[:, 351:364] > scalers["LacticAcid"].transform([[2]])[0][0]).any(dim=1))
-    f2 = ltn.Function(func=lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1)))
-    check_presence_crp_atb = ltn.Function(func= lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device))
-    check_crp_100 = ltn.Function(func = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1))
-    ERSepsisTriage = ltn.Constant(torch.tensor([1, 0]))
-    Leucocytes = ltn.Constant(torch.tensor([0, 1]))
-elif dataset == "bpi12":
-    f1 = ltn.Function(func=lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1))
-    f2 = ltn.Function(func=lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1))
-    f3 = ltn.Function(func=lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))
-    f_resources_11169 = ltn.Function(func=lambda x: (x[:, :240] == 48).any(dim=1))
-    f_resources_10910 = ltn.Function(func=lambda x: (x[:, :240] == 21).any(dim=1))
-    A_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([1, 0]))
-    O_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([0, 1]))
+f1 = ltn.Function(func=lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1))
+f2 = ltn.Function(func=lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1))
+f3 = ltn.Function(func=lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))
+f_resources_11169 = ltn.Function(func=lambda x: (x[:, :240] == 48).any(dim=1))
+f_resources_10910 = ltn.Function(func=lambda x: (x[:, :240] == 21).any(dim=1))
+A_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([1, 0]))
+O_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([0, 1]))
 
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
@@ -351,15 +323,11 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            # SEPSIS KG
-            Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
-            Forall(x_All, Implies(f2(x_All), P(x_All))),
-            Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All)))
-            # # BPI 12 KG
-            # Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)),
-            # Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1) & (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))),
-            # Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 48).any(dim=1)),
-            # Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 21).any(dim=1)),
+            # BPI 12 KG
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)),
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1) & (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))),
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 48).any(dim=1)),
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 21).any(dim=1)),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -459,9 +427,6 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P))),
             ])
         formulas.extend([
-            # Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
-            # Forall(x_All, Implies(f2(x_All), P(x_All))),
-            # Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All)))
             # BPI 12 KG
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)),
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1) & (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))),
@@ -523,11 +488,6 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            # SEPSIS KG
-            # Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
-            # Forall(x_All, Implies(f2(x_All), P(x_All))),
-            # Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All))),
-            # Forall(x_All, And(has_act(x_All), Next(x_All, ERSepsisTriage)))
             # BPI 12 KG
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)),
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1) & (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))),
@@ -589,7 +549,6 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            # Forall(x_All, And(has_act(x_All), Next(x_All, ERSepsisTriage)))
             Forall(x_All, And(has_act_1(x_All), Next(x_All, A_ACCEPTED_COMPLETE))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, O_ACCEPTED_COMPLETE))),
         ])
@@ -646,10 +605,6 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            # Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
-            # Forall(x_All, Implies(f2(x_All), P(x_All))),
-            # Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All))),
-            # Forall(x_All, And(has_act(x_All), Next(x_All, ERSepsisTriage))),
             # BPI 12 KG
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)),
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1) & (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))),
