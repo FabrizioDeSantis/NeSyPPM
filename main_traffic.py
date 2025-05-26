@@ -25,14 +25,7 @@ metrics = defaultdict(list)
 
 dataset = "traffic_fines"
 
-if dataset == "sepsis_2":
-    classes = ['No ICU', 'ICU']
-elif dataset == "sepsis_3":
-    classes = ["Release A", "No Release A"]
-elif dataset == "bpi12":
-    classes = ["Not accepted", "Accepted"]
-elif dataset == "traffic_fines":
-    classes = ["Repaid", "Send for credit collection"]
+classes = ["Repaid", "Send for credit collection"]
 
 metrics_lstm = []
 metrics_ltn = []
@@ -51,11 +44,10 @@ def get_args():
     parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the LSTM model")
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for the LSTM model")
     parser.add_argument("--num_epochs", type=int, default=15, help="Number of epochs for training")
-    parser.add_argument("--num_epochs_nesy", type=int, default=5, help="Number of epochs for training LTN model")
+    parser.add_argument("--num_epochs_nesy", type=int, default=15, help="Number of epochs for training LTN model")
     # training configuration
     parser.add_argument("--train_vanilla", type=bool, default=True, help="Train vanilla LSTM model")
     parser.add_argument("--train_nesy", type=bool, default=True, help="Train LTN model")
-    parser.add_argument("--dataset_size", type=float, default=10, help="Size of the dataset (10%, 20%, 50%, 70%, 90%, 100%)")
 
     return parser.parse_args()
 
@@ -87,11 +79,11 @@ print(counts)
 
 print(feature_names)
 
-train_dataset = TrafficDataset(X_train, y_train)
+train_dataset = NeSyDataset(X_train, y_train)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_dataset = TrafficDataset(X_val, y_val)
+val_dataset = NeSyDataset(X_val, y_val)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_dataset = TrafficDataset(X_test, y_test)
+test_dataset = NeSyDataset(X_test, y_test)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names).to(device)
@@ -424,12 +416,13 @@ metrics_ltn_AB.append(compliance)
 # LTN_BC
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 #has_act = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 5).any(dim=1))
 has_act_1 = ltn.Function(func = lambda x: torch.tensor(x[:, :10] == 3).any(dim=1))
 has_act_2 = ltn.Function(func = lambda x: torch.tensor(x[:, :10] == 10).any(dim=1))
-SendFine = ltn.Constant(torch.tensor([1, 0]))
-Notification = ltn.Constant(torch.tensor([0, 1]))
+SendFine = ltn.Constant(torch.tensor([1, 0, 0]))
+Notification = ltn.Constant(torch.tensor([0, 1, 0]))
+Payment = ltn.Constant(torch.tensor([0, 0, 1]))
 P = ltn.Predicate(lstm).to(device)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -459,6 +452,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 90] > scalers["amount"].transform([[400]])[0][0])),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, SendFine))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, Notification))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Payment))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -488,7 +482,7 @@ metrics_ltn_BC.append(compliance)
 
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -519,8 +513,9 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            Forall(x_Next, And(has_act_1(x_Next), Next(x_Next, SendFine))),
-            Forall(x_Next, And(has_act_2(x_Next), Next(x_Next, Notification))),
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, SendFine))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Notification))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Payment))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -550,7 +545,7 @@ metrics_ltn_AC.append(compliance)
 
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -585,8 +580,9 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :10] == 1).any(dim=1)),
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, :10] == 7).any(dim=1) & (x.value[:, 100:110].max(dim=1).values < x.value[:, 90]))),
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 90] > scalers["amount"].transform([[400]])[0][0])),
-            Forall(x_Next, And(has_act_1(x_Next), Next(x_Next, SendFine))),
-            Forall(x_Next, And(has_act_2(x_Next), Next(x_Next, Notification))),
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, SendFine))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Notification))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Payment))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
