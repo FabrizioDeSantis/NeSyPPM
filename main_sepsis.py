@@ -18,7 +18,7 @@ import argparse
 
 import warnings
 warnings.filterwarnings("ignore")
-
+dataset = "sepsis"
 classes = ['No ICU', 'ICU']
 
 metrics_lstm = []
@@ -38,11 +38,10 @@ def get_args():
     parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the LSTM model")
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for the LSTM model")
     parser.add_argument("--num_epochs", type=int, default=15, help="Number of epochs for training")
-    parser.add_argument("--num_epochs_nesy", type=int, default=5, help="Number of epochs for training LTN model")
+    parser.add_argument("--num_epochs_nesy", type=int, default=15, help="Number of epochs for training LTN model")
     # training configuration
     parser.add_argument("--train_vanilla", type=bool, default=True, help="Train vanilla LSTM model")
     parser.add_argument("--train_nesy", type=bool, default=True, help="Train LTN model")
-    parser.add_argument("--dataset_size", type=float, default=10, help="Size of the dataset (10%, 20%, 50%, 70%, 90%, 100%)")
 
     return parser.parse_args()
 
@@ -58,7 +57,7 @@ config = ModelConfig(
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 print("-- Reading dataset")
-data = pd.read_csv("data_processed/sepsis.csv", dtype={"org:resource": str})
+data = pd.read_csv("data_processed/sepsis_2.csv", dtype={"org:resource": str})
 
 (X_train_, y_train_, X_test, y_test, feature_names), vocab_sizes, scalers = preprocess_sepsis.preprocess_eventlog(data)
 X_train, X_val, y_train, y_val = train_test_split(X_train_, y_train_, test_size=0.2, stratify=y_train_, random_state=42)
@@ -285,8 +284,9 @@ f1 = ltn.Function(func=lambda x: (x[:, 351:364] > scalers["LacticAcid"].transfor
 f2 = ltn.Function(func=lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1)))
 check_presence_crp_atb = ltn.Function(func= lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device))
 check_crp_100 = ltn.Function(func = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1))
-ERSepsisTriage = ltn.Constant(torch.tensor([1, 0]))
-Leucocytes = ltn.Constant(torch.tensor([0, 1]))
+ERSepsisTriage = ltn.Constant(torch.tensor([1, 0, 0]))
+Antibiotics = ltn.Constant(torch.tensor([0, 1, 0]))
+Liquid = ltn.Constant(torch.tensor([0, 0, 1]))
 
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
@@ -322,7 +322,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (B)")
-accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, "sepsis_2")
+accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_B.append(accuracy)
 print("F1 Score:", f1score)
@@ -336,7 +336,7 @@ metrics_ltn_B.append(compliance)
 
 # LTN_A
 rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
-rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
+rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x])
 rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
@@ -349,11 +349,11 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
-        rule_1_res = rule_1(x).detach().cpu().numpy()
-        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_1_res = rule_1(x).detach()
+        rule_2_res = rule_2(x).detach()
         rule_crp_atb_res = rule_crp_atb(x)
         rule_crp_100_res = rule_crp_100(x)
-        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -405,11 +405,11 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
-        rule_1_res = rule_1(x).detach().cpu().numpy()
-        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_1_res = rule_1(x).detach()
+        rule_2_res = rule_2(x).detach()
         rule_crp_atb_res = rule_crp_atb(x)
         rule_crp_100_res = rule_crp_100(x)
-        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -442,7 +442,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (AB)")
-accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, "sepsis_2")
+accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_AB.append(accuracy)
 print("F1 Score:", f1score)
@@ -457,8 +457,9 @@ metrics_ltn_AB.append(compliance)
 # LTN_BC
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
-has_act = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 5).any(dim=1))
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
+has_act_1 = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 5).any(dim=1))
+has_act_2 = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 4).any(dim=1))
 P = ltn.Predicate(lstm).to(device)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -487,7 +488,10 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(f2(x_All), P(x_All))),
             Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All))),
-            Forall(x_All, And(has_act(x_All), Next(x_All, ERSepsisTriage)))
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, ERSepsisTriage))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Antibiotics))),
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, Liquid))),
+
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -517,7 +521,7 @@ metrics_ltn_BC.append(compliance)
 
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -530,11 +534,11 @@ for epoch in range(args.num_epochs_nesy):
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
         x_All = ltn.Variable("x_All", x)
-        rule_1_res = rule_1(x).detach().cpu().numpy()
-        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_1_res = rule_1(x).detach()
+        rule_2_res = rule_2(x).detach()
         rule_crp_atb_res = rule_crp_atb(x)
         rule_crp_100_res = rule_crp_100(x)
-        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -550,7 +554,9 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            Forall(x_All, And(has_act(x_All), Next(x_All, ERSepsisTriage)))
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, ERSepsisTriage))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Antibiotics))),
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, Liquid))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -580,7 +586,7 @@ metrics_ltn_AC.append(compliance)
 
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -593,11 +599,11 @@ for epoch in range(args.num_epochs_nesy):
     for enum, (x, y) in enumerate(train_loader):
         x_All = ltn.Variable("x_All", x)
         optimizer.zero_grad()
-        rule_1_res = rule_1(x).detach().cpu().numpy()
-        rule_2_res = rule_2(x).detach().cpu().numpy()
+        rule_1_res = rule_1(x).detach()
+        rule_2_res = rule_2(x).detach()
         rule_crp_atb_res = rule_crp_atb(x)
         rule_crp_100_res = rule_crp_100(x)
-        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach().cpu().numpy()
+        rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -616,7 +622,9 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(f2(x_All), P(x_All))),
             Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All))),
-            Forall(x_All, And(has_act(x_All), Next(x_All, ERSepsisTriage))),
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, ERSepsisTriage))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, Antibiotics))),
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, Liquid))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
