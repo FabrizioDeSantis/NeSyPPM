@@ -10,7 +10,7 @@ import statistics
 from metrics import compute_accuracy, compute_metrics, compute_accuracy_a, compute_metrics_fa
 from collections import defaultdict, Counter
 from data import preprocess_bpi17
-from data.dataset import B17Dataset, ModelConfig
+from data.dataset import NeSyDataset, ModelConfig
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -38,8 +38,8 @@ def get_args():
     parser.add_argument("--hidden_size", type=int, default=128, help="Hidden size of the LSTM model")
     parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the LSTM model")
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for the LSTM model")
-    parser.add_argument("--num_epochs", type=int, default=15, help="Number of epochs for training")
-    parser.add_argument("--num_epochs_nesy", type=int, default=5, help="Number of epochs for training LTN model")
+    parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs for training")
+    parser.add_argument("--num_epochs_nesy", type=int, default=1, help="Number of epochs for training LTN model")
     # training configuration
     parser.add_argument("--train_vanilla", type=bool, default=True, help="Train vanilla LSTM model")
     parser.add_argument("--train_nesy", type=bool, default=True, help="Train LTN model")
@@ -75,11 +75,11 @@ print(counts)
 
 print(feature_names)
 
-train_dataset = B17Dataset(X_train, y_train)
+train_dataset = NeSyDataset(X_train, y_train)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_dataset = B17Dataset(X_val, y_val)
+val_dataset = NeSyDataset(X_val, y_val)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_dataset = B17Dataset(X_test, y_test)
+test_dataset = NeSyDataset(X_test, y_test)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names).to(device)
@@ -216,7 +216,7 @@ for epoch in range(args.num_epochs_nesy):
                 %(epoch, train_loss))
 
 lstm.eval()
-print("Metrics LTN w knowledge")
+print("Metrics LTN w/o knowledge")
 accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn.append(accuracy)
@@ -405,12 +405,14 @@ metrics_ltn_AB.append(compliance)
 # LTN_BC
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 #has_act = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 5).any(dim=1))
 has_act_1 = ltn.Function(func = lambda x: torch.tensor(x[:, :20] == 8).any(dim=1))
 has_act_2 = ltn.Function(func = lambda x: torch.tensor(x[:, :20] == 1).any(dim=1))
-A_Accepted = ltn.Constant(torch.tensor([1, 0]))
-O_Create_Offer = ltn.Constant(torch.tensor([0, 1]))
+has_act_3 = ltn.Function(func = lambda x: torch.tensor(x[:, :20] == 3).any(dim=1))
+A_Accepted = ltn.Constant(torch.tensor([1, 0, 0]))
+O_Create_Offer = ltn.Constant(torch.tensor([0, 1, 0]))
+W_validate_application = ltn.Constant(torch.tensor([0, 0, 0]))
 P = ltn.Predicate(lstm).to(device)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -440,6 +442,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=lambda x: (x.value[:, 140] > scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x.value[:, 20:40] == 6).any(dim=1)),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, A_Accepted))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, O_Create_Offer))),
+            Forall(x_All, And(has_act_3(x_All), Next(x_All, W_validate_application))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -469,7 +472,7 @@ metrics_ltn_BC.append(compliance)
 
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -500,8 +503,9 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            Forall(x_Next, And(has_act_1(x_Next), Next(x_Next, A_Accepted))),
-            Forall(x_Next, And(has_act_2(x_Next), Next(x_Next, O_Create_Offer))),
+            Forall(x_All, And(has_act_1(x_All), Next(x_All, A_Accepted))),
+            Forall(x_All, And(has_act_2(x_All), Next(x_All, O_Create_Offer))),
+            Forall(x_All, And(has_act_3(x_All), Next(x_All, W_validate_application))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -531,7 +535,7 @@ metrics_ltn_AC.append(compliance)
 
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -568,6 +572,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=lambda x: (x.value[:, 140] > scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x.value[:, 20:40] == 6).any(dim=1)),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, A_Accepted))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, O_Create_Offer))),
+            Forall(x_All, And(has_act_3(x_All), Next(x_All, W_validate_application))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
