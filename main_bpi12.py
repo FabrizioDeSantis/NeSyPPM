@@ -42,7 +42,7 @@ def get_args():
     parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the LSTM model")
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for the LSTM model")
     parser.add_argument("--num_epochs", type=int, default=15, help="Number of epochs for training")
-    parser.add_argument("--num_epochs_nesy", type=int, default=5, help="Number of epochs for training LTN model")
+    parser.add_argument("--num_epochs_nesy", type=int, default=15, help="Number of epochs for training LTN model")
     # training configuration
     parser.add_argument("--train_vanilla", type=bool, default=True, help="Train vanilla LSTM model")
     parser.add_argument("--train_nesy", type=bool, default=True, help="Train LTN model")
@@ -298,13 +298,14 @@ def compute_satisfaction_level(loader):
     mean_sat /= len(loader)
     return mean_sat
 
-f1 = ltn.Function(func=lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1))
-f2 = ltn.Function(func=lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1))
-f3 = ltn.Function(func=lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))
-f_resources_11169 = ltn.Function(func=lambda x: (x[:, :240] == 48).any(dim=1))
-f_resources_10910 = ltn.Function(func=lambda x: (x[:, :240] == 21).any(dim=1))
-A_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([1, 0]))
-O_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([0, 1]))
+f1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
+f2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
+f3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
+f_resources_11169 = lambda x: (x[:, :240] == 48).any(dim=1)
+f_resources_10910 = lambda x: (x[:, :240] == 21).any(dim=1)
+A_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([1, 0, 0]))
+O_ACCEPTED_COMPLETE = ltn.Constant(torch.tensor([0, 1, 0]))
+W_Valideren_aanvraag_COMPLETE = ltn.Constant(torch.tensor([0, 0, 1]))
 
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
@@ -366,13 +367,13 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
-        rule_1_res = f1(x).detach().cpu().numpy()
-        f2_res = f2(x)
-        f3_res = f3(x)
-        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
-        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
-        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
-        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        rule_1_res = f1(x).detach()
+        f2_res = f2(x).detach()
+        f3_res = f3(x).detach()
+        f_resources_11169_res = f_resources_11169(x).detach()
+        f_resources_10910_res = f_resources_10910(x).detach()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -424,13 +425,13 @@ for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
-        rule_1_res = f1(x).detach().cpu().numpy()
-        f2_res = f2(x)
-        f3_res = f3(x)
-        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
-        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
-        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
-        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        rule_1_res = f1(x).detach()
+        f2_res = f2(x).detach()
+        f3_res = f3(x).detach()
+        f_resources_11169_res = f_resources_11169(x).detach()
+        f_resources_10910_res = f_resources_10910(x).detach()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -480,10 +481,11 @@ metrics_ltn_AB.append(compliance)
 # LTN_BC
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 #has_act = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 5).any(dim=1))
 has_act_1 = ltn.Function(func = lambda x: torch.tensor(x[:, 40:80] == 22).any(dim=1))
 has_act_2 = ltn.Function(func = lambda x: torch.tensor(x[:, 40:80] == 31).any(dim=1))
+has_act_3 = ltn.Function(func = lambda x: torch.tensor(x[:, 40:80] == 15).any(dim=1))
 P = ltn.Predicate(lstm).to(device)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -515,6 +517,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 21).any(dim=1)),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, A_ACCEPTED_COMPLETE))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, O_ACCEPTED_COMPLETE))),
+            Forall(x_All, And(has_act_3(x_All), Next(x_All, W_Valideren_aanvraag_COMPLETE))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -560,10 +563,10 @@ for epoch in range(args.num_epochs_nesy):
         rule_1_res = f1(x).detach().cpu().numpy()
         f2_res = f2(x)
         f3_res = f3(x)
-        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
-        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
-        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
-        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        f_resources_11169_res = f_resources_11169(x).detach()
+        f_resources_10910_res = f_resources_10910(x).detach()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -610,7 +613,7 @@ metrics_ltn_AC.append(compliance)
 
 lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
-lstm_next = LSTMModelNext(vocab_sizes, config, 2, feature_names)
+lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -623,13 +626,13 @@ for epoch in range(args.num_epochs_nesy):
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
         x_All = ltn.Variable("x_All", x)
-        rule_1_res = f1(x).detach().cpu().numpy()
+        rule_1_res = f1(x).detach()
         f2_res = f2(x)
         f3_res = f3(x)
-        f_resources_11169_res = f_resources_11169(x).detach().cpu().numpy()
-        f_resources_10910_res = f_resources_10910(x).detach().cpu().numpy()
-        rule_2_res = torch.logical_and(f2_res, f3_res).detach().cpu().numpy()
-        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach().cpu().numpy()
+        f_resources_11169_res = f_resources_11169(x).detach()
+        f_resources_10910_res = f_resources_10910(x).detach()
+        rule_2_res = torch.logical_and(f2_res, f3_res).detach()
+        rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach()
         x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
         x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
@@ -652,6 +655,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 21).any(dim=1)),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, A_ACCEPTED_COMPLETE))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, O_ACCEPTED_COMPLETE))),
+            Forall(x_All, And(has_act_3(x_All), Next(x_All, W_Valideren_aanvraag_COMPLETE))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
