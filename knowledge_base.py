@@ -35,7 +35,7 @@ R3: If the Requested Amount is greater than 20000 and the Loan Goal is "Existing
     \/ x (RequestedAmount(x) > 20000 /\ LoanGoal(x) = "Existing loan takeover" -> ApplicationAccepted(x))
 R4: The activity A_SUBMITTED should be followed by the activity A_ACCEPTED.
 R5: The activity A_ACCEPTED should be followed by the activity O_CREATE_OFFER.
-R6: The activity A_Complete should be followed by the activity 
+R6: The activity A_Complete should be followed by the activity W_validate application.
 '''
 # TRAFFIC FINES KNOWLEDGE BASE
 '''
