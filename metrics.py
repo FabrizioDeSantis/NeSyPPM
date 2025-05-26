@@ -426,22 +426,25 @@ def compute_accuracy_a(loader, model, device, rule_1, rule_2, rule_3):
     accuracy = accuracy_score(y_true, y_pred)
     return accuracy
 
-def compute_metrics_fa(loader, model, device, mode, scalers, dataset, rule_1, rule_2, rule_3):
-    # ### SEPSIS RULES
-    # rule_crit = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
-    # rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
-    # rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
-    # ### BPI12 RULES
-    # rule_amount_1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
-    # rule_amount_2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
-    # rule_amount_3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
-    # rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
-    # rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
-    # # TRAFFIC RULES
-    # rule_penalty = lambda x: (x[:, :10] == 1).any(dim=1)
-    # rule_payment = lambda x: (x[:, :10] == 7).any(dim=1) & (x[:, 100:110].max(dim=1).values < x[:, 90])
-    # rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
-    ############
+def compute_metrics_fa(loader, model, device, mode, scalers, dataset):
+    ### SEPSIS RULES
+    if dataset == "sepsis":
+        rule_crit = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
+        rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
+        rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
+    ### BPI12 RULES
+    if dataset == "bpi12":
+        rule_amount_1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
+        rule_amount_2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
+        rule_amount_3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
+        rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
+        rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
+    # TRAFFIC RULES
+    if dataset == "traffic_fines":
+        rule_penalty = lambda x: (x[:, :10] == 1).any(dim=1)
+        rule_payment = lambda x: (x[:, :10] == 7).any(dim=1) & (x[:, 100:110].max(dim=1).values < x[:, 90])
+        rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
+    ###########
     # BPI17 RULES
     rule_1 = lambda x: ((x[:, 140] < scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, :20] == 11).any(dim=1) & (x[:, 40:60] != 0).any(dim=1))
     rule_2 = lambda x: (x[:, 40:60] == 0).all(dim=1) & (x[:, :20] == 11).any(dim=1)
@@ -461,62 +464,62 @@ def compute_metrics_fa(loader, model, device, mode, scalers, dataset, rule_1, ru
         data = torch.cat([data, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
         predictions = model(data).detach().cpu().numpy()
         predictions = np.where(predictions > 0.5, 1., 0.).flatten()
-        # if dataset == "sepsis_2":
-        #     rule_crit_res= rule_crit(data).detach().cpu().numpy()
-        #     rule_crp_atb_res = rule_crp_atb(data).detach().cpu().numpy()
-        #     rule_crp_100_res = rule_crp_100(data).detach().cpu().numpy()
-        # elif dataset == "bpi12":
-        #     rule_amount_1_res = rule_amount_1(data).detach().cpu().numpy()
-        #     rule_amount_2_res = rule_amount_2(data).detach().cpu().numpy()
-        #     rule_amount_3_res = rule_amount_3(data).detach().cpu().numpy()
-        #     rule_resource_1_res = rule_resource_1(data).detach().cpu().numpy()
-        #     rule_resource_2_res = rule_resource_2(data).detach().cpu().numpy()
-        # elif dataset == "traffic_fines":
-        #     rule_penalty_res = rule_penalty(data).detach().cpu().numpy()
-        #     rule_payment_res = rule_payment(data).detach().cpu().numpy()
-        #     rule_amount_res = rule_amount(data).detach().cpu().numpy()
+        if dataset == "sepsis":
+            rule_crit_res= rule_crit(data).detach().cpu().numpy()
+            rule_crp_atb_res = rule_crp_atb(data).detach().cpu().numpy()
+            rule_crp_100_res = rule_crp_100(data).detach().cpu().numpy()
+        elif dataset == "bpi12":
+            rule_amount_1_res = rule_amount_1(data).detach().cpu().numpy()
+            rule_amount_2_res = rule_amount_2(data).detach().cpu().numpy()
+            rule_amount_3_res = rule_amount_3(data).detach().cpu().numpy()
+            rule_resource_1_res = rule_resource_1(data).detach().cpu().numpy()
+            rule_resource_2_res = rule_resource_2(data).detach().cpu().numpy()
+        elif dataset == "traffic_fines":
+            rule_penalty_res = rule_penalty(data).detach().cpu().numpy()
+            rule_payment_res = rule_payment(data).detach().cpu().numpy()
+            rule_amount_res = rule_amount(data).detach().cpu().numpy()
         for i in range(len(labels)):
             y_pred.append(predictions[i])
             y_true.append(labels[i].cpu())
-            # if dataset == "bpi12":
-            #     if rule_amount_1_res[i] == 1 and labels[i] == 0:
-            #         num_constraints += 1
-            #         if predictions[i] == 0:
-            #             satisfied_constraints += 1
-            #     if rule_amount_2_res[i] == 1 and rule_amount_3_res[i] == 1 and labels[i] == 0:
-            #         num_constraints += 1
-            #         if predictions[i] == 0:
-            #             satisfied_constraints += 1
-            #     if rule_resource_1_res[i] == 1 and labels[i] == 0:
-            #         num_constraints += 1
-            #         if predictions[i] == 0:
-            #             satisfied_constraints += 1
-            #     if rule_resource_2_res[i] == 1 and labels[i] == 0:
-            #         num_constraints += 1
-            #         if predictions[i] == 0:
-            #             satisfied_constraints += 1
-            # elif dataset == "sepsis_2":
-            #     if rule_crit_res[i] == 1 and labels[i] == 1:
-            #         num_constraints += 1
-            #         if predictions[i] == 1:
-            #             satisfied_constraints += 1
-            #     if rule_crp_atb_res[i] == 1 and rule_crp_100_res[i] == 1 and labels[i] == 0:
-            #         num_constraints += 1
-            #         if predictions[i] == 1:
-            #             satisfied_constraints += 1
-            # elif dataset == "traffic_fines":
-            #     if rule_penalty_res[i] == 1 and labels[i] == 1:
-            #         num_constraints += 1
-            #         if predictions[i] == 1:
-            #             satisfied_constraints += 1
-            #     if rule_payment_res[i] == 1 and labels[i] == 1:
-            #         num_constraints += 1
-            #         if predictions[i] == 1:
-            #             satisfied_constraints += 1         
-            #     if rule_amount_res[i] == 1 and labels[i] == 1:
-            #         num_constraints += 1
-            #         if predictions[i] == 1:
-            #             satisfied_constraints += 1
+            if dataset == "bpi12":
+                if rule_amount_1_res[i] == 1 and labels[i] == 0:
+                    num_constraints += 1
+                    if predictions[i] == 0:
+                        satisfied_constraints += 1
+                if rule_amount_2_res[i] == 1 and rule_amount_3_res[i] == 1 and labels[i] == 0:
+                    num_constraints += 1
+                    if predictions[i] == 0:
+                        satisfied_constraints += 1
+                if rule_resource_1_res[i] == 1 and labels[i] == 0:
+                    num_constraints += 1
+                    if predictions[i] == 0:
+                        satisfied_constraints += 1
+                if rule_resource_2_res[i] == 1 and labels[i] == 0:
+                    num_constraints += 1
+                    if predictions[i] == 0:
+                        satisfied_constraints += 1
+            elif dataset == "sepsis":
+                if rule_crit_res[i] == 1 and labels[i] == 1:
+                    num_constraints += 1
+                    if predictions[i] == 1:
+                        satisfied_constraints += 1
+                if rule_crp_atb_res[i] == 1 and rule_crp_100_res[i] == 1 and labels[i] == 0:
+                    num_constraints += 1
+                    if predictions[i] == 1:
+                        satisfied_constraints += 1
+            elif dataset == "traffic_fines":
+                if rule_penalty_res[i] == 1 and labels[i] == 1:
+                    num_constraints += 1
+                    if predictions[i] == 1:
+                        satisfied_constraints += 1
+                if rule_payment_res[i] == 1 and labels[i] == 1:
+                    num_constraints += 1
+                    if predictions[i] == 1:
+                        satisfied_constraints += 1         
+                if rule_amount_res[i] == 1 and labels[i] == 1:
+                    num_constraints += 1
+                    if predictions[i] == 1:
+                        satisfied_constraints += 1
             if dataset == "bpi17":
                 if rule_1_res[i] == 1 and labels[i] == 1:
                     num_constraints += 1
@@ -551,24 +554,28 @@ def compute_metrics_fa(loader, model, device, mode, scalers, dataset, rule_1, ru
 
 def compute_metrics(loader, model, device, mode, scalers, dataset):
     ### SEPSIS RULES
-    rule_1 = lambda x: (x[..., 351:364] > scalers["LacticAcid"].transform([[2]])[0][0]).any(dim=1)
-    rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
-    rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
-    rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
-    # ### BPI12 RULES
-    # rule_amount_1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
-    # rule_amount_2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
-    # rule_amount_3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
-    # rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
-    # rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
-    # # TRAFFIC RULES
-    # rule_penalty = lambda x: (x[:, :10] == 1).any(dim=1)
-    # rule_payment = lambda x: (x[:, :10] == 7).any(dim=1) & (x[:, 100:110].max(dim=1).values < x[:, 90])
-    # rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
-    # # BPI17 RULES
-    # rule_1 = lambda x: ((x[:, 140] < scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, :20] == 11).any(dim=1) & (x[:, 40:60] != 0).any(dim=1))
-    # rule_2 = lambda x: (x[:, 40:60] == 0).all(dim=1) & (x[:, :20] == 11).any(dim=1)
-    # rule_3 = lambda x: (x[:, 140] > scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, 20:40] == 6).any(dim=1)
+    if dataset == "sepsis":
+        rule_1 = lambda x: (x[..., 351:364] > scalers["LacticAcid"].transform([[2]])[0][0]).any(dim=1)
+        rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
+        rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
+        rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
+    # BPI12 RULES
+    if dataset == "bpi12":
+        rule_amount_1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
+        rule_amount_2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
+        rule_amount_3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
+        rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
+        rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
+    # TRAFFIC RULES
+    if dataset == "traffic_fines":
+        rule_penalty = lambda x: (x[:, :10] == 1).any(dim=1)
+        rule_payment = lambda x: (x[:, :10] == 7).any(dim=1) & (x[:, 100:110].max(dim=1).values < x[:, 90])
+        rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
+    # BPI17 RULES
+    if dataset == "bpi17":
+        rule_1 = lambda x: ((x[:, 140] < scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, :20] == 11).any(dim=1) & (x[:, 40:60] != 0).any(dim=1))
+        rule_2 = lambda x: (x[:, 40:60] == 0).all(dim=1) & (x[:, :20] == 11).any(dim=1)
+        rule_3 = lambda x: (x[:, 140] > scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, 20:40] == 6).any(dim=1)
     ############
     y_pred = []
     y_true = []
@@ -579,7 +586,7 @@ def compute_metrics(loader, model, device, mode, scalers, dataset):
         data = data.to(device)
         predictions = model(data).detach().cpu().numpy()
         predictions = np.where(predictions > 0.5, 1., 0.).flatten()
-        if dataset == "sepsis_2":
+        if dataset == "sepsis":
             rule_2_res = rule_2(data).detach().cpu().numpy()
             rule_crp_atb_res = rule_crp_atb(data).detach().cpu().numpy()
             rule_crp_100_res = rule_crp_100(data).detach().cpu().numpy()
@@ -617,7 +624,7 @@ def compute_metrics(loader, model, device, mode, scalers, dataset):
                     num_constraints += 1
                     if predictions[i] == 0:
                         satisfied_constraints += 1
-            elif dataset == "sepsis_2":
+            elif dataset == "sepsis":
                 if rule_2_res[i] == 1 and labels[i] == 1:
                     num_constraints += 1
                     if predictions[i] == 1:
