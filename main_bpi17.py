@@ -330,7 +330,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (A)")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_1, rule_2, rule_3)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_A.append(accuracy)
 print("F1 Score:", f1score)
@@ -390,7 +390,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (AB)")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_1, rule_2, rule_3)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_AB.append(accuracy)
 print("F1 Score:", f1score)
@@ -519,7 +519,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (AC)")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_1, rule_2, rule_3)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_AC.append(accuracy)
 print("F1 Score:", f1score)
@@ -586,7 +586,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_1, rule_2, rule_3)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_ABC.append(accuracy)
 print("F1 Score:", f1score)
