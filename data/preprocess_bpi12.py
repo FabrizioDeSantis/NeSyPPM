@@ -8,7 +8,7 @@ import random
 #     unique_groups = list(grouped.groups.keys())  # Get the unique group IDs
 #     labels = data.groupby("case:concept:name")["label"].first().to_list()
 
-#     len_test_set = int(len(unique_groups) * 0.2)
+#     len_test_set = int(len(unique_groups) * 0.3)
 
 #     labels_r1 = data.groupby("case:concept:name")["rule_1"].first().to_list()
 #     labels_r2 = data.groupby("case:concept:name")["rule_2"].first().to_list()
@@ -49,7 +49,7 @@ import random
 
 #     # Remove the selected test IDs from the original list
 #     training_ids = [x for x in unique_groups if x not in test_ids]
-#     training_ids = training_ids + filtered_values_r1_training + filtered_values_r2_training + filtered_values_r3_training
+#     #training_ids = training_ids + filtered_values_r1_training + filtered_values_r2_training + filtered_values_r3_training
 #     training_ids = list(set(training_ids))  # Remove duplicates
 
 #     compliant_training_ids = [x for x in training_ids if x in compliant_ids]
@@ -60,7 +60,7 @@ import random
 #     return training_ids, test_ids
 
 def create_test_set(data):
-    random.seed(33)
+    random.seed(42)
     grouped = data.groupby("case:concept:name")
     unique_groups = list(grouped.groups.keys())  # Get the unique group IDs
     labels = data.groupby("case:concept:name")["label"].first().to_list()
@@ -72,12 +72,12 @@ def create_test_set(data):
     labels_r2 = data.groupby("case:concept:name")["rule_2"].first().to_list()
     labels_r3 = data.groupby("case:concept:name")["rule_3"].first().to_list()
 
-    filtered_values_r1 = [v for v, l, r in zip(unique_groups, labels, labels_r1) if (r == 1 and l == 1)]
+    filtered_values_r1 = [v for v, l, r in zip(unique_groups, labels, labels_r1) if (r == 1 and l == 0)]
     filtered_values_r2 = [v for v, l, r in zip(unique_groups, labels, labels_r2) if (r == 1 and l == 0)]
     filtered_values_r3 = [v for v, l, r in zip(unique_groups, labels, labels_r3) if (r == 1 and l == 0)]
     compliant_ids = list(set(filtered_values_r1 + filtered_values_r2 + filtered_values_r3))
 
-    filtered_no_r1 = [v for v, l, r in zip(unique_groups, labels, labels_r1) if (r == 1 and l != 1)]
+    filtered_no_r1 = [v for v, l, r in zip(unique_groups, labels, labels_r1) if (r == 1 and l != 0)]
     filtered_no_r2 = [v for v, l, r in zip(unique_groups, labels, labels_r2) if (r == 1 and l != 0)]
     filtered_no_r3 = [v for v, l, r in zip(unique_groups, labels, labels_r3) if (r == 1 and l != 0)]
     non_compliant_ids = list(set(filtered_no_r1 + filtered_no_r2 + filtered_no_r3))
@@ -125,7 +125,7 @@ def create_ngrams(data, train_ids, test_ids, window_size=40):
         if len(group) > window_size:
             group = group.iloc[:window_size]
 
-        group = group.drop(columns=["label", "case:concept:name", "time:timestamp", "concept:name_str", "rule_3"])
+        group = group.drop(columns=["label", "case:concept:name", "time:timestamp", "concept:name_str", "rule_1", "rule_2", "rule_3"])
 
         feature_names = group.columns.tolist()
         # Create n-grams of size 2, 4, 6, ...
@@ -148,7 +148,7 @@ def create_ngrams(data, train_ids, test_ids, window_size=40):
         if len(group) > window_size:
             group = group.iloc[:window_size]
 
-        group = group.drop(columns=["label", "case:concept:name", "time:timestamp", "concept:name_str", "rule_3"])
+        group = group.drop(columns=["label", "case:concept:name", "time:timestamp", "concept:name_str", "rule_1", "rule_2", "rule_3"])
         # group = group.drop(columns=["label", "case:concept:name", "time:timestamp", "lifecycle:transition", "concept:name_str"])
         
         feature_names = group.columns.tolist()
@@ -196,6 +196,7 @@ def preprocess_eventlog(data, dataset_size=None):
     data["concept:name"] = pd.Categorical(data["concept:name"])
     print("W_Completeren aanvraag-COMPLETE: ", data["concept:name"].cat.categories.get_loc("W_Completeren aanvraag-COMPLETE") + 1)
     print("W_Valideren aanvraag-COMPLETE: ", data["concept:name"].cat.categories.get_loc("W_Valideren aanvraag-COMPLETE") + 1)
+    print("O_SENT_BACK-COMPLETE: ", data["concept:name"].cat.categories.get_loc("O_SENT_BACK-COMPLETE") + 1)
     data["concept:name"] = data["concept:name"].cat.codes + 1
     vocab_sizes["concept:name"] = data["concept:name"].max()
 

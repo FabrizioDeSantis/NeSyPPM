@@ -16,11 +16,11 @@ R6: If the activity ERSepsisTriage occurs, the activity IV Liquid should occur a
 # BPI2012 KNOWLEDGE BASE
 '''
 R1: If the Requested Amount is less than 10000, then the application should not be accepted. 
-    \-/ x (RequestedAmount(x) < 10000 -> ApplicationAccepted(x))
+    \-/ x (RequestedAmount(x) < 10000 -> Not(ApplicationAccepted(x)))
 R2: If the Requested Amount is greater than 50000 and less than 100000, then the application should not be accepted. 
     \-/ x (RequestedAmount(x) > 50000 /\ RequestedAmount(x) < 100000 -> Not(ApplicationAccepted(x)))
-R3: If the resources 10910 and 11169 perform an activity, then the application should not be accepted. 
-    \-/ x (HasResource(x,10910) /\ HasResource(x,11169) -> Not(ApplicationAccepted(x)))
+R3: If the resources 10910 or 11169 perform an activity, then the application should not be accepted. 
+    \-/ x (HasResource(x,10910) \/ HasResource(x,11169) -> Not(ApplicationAccepted(x)))
 R4: If the activity W_Completeren aanvraag-COMPLETE occurs, the activity A_ACCEPTED_COMPLETE should occur after W_Completeren aanvraag-COMPLETE.
 R5: If the activity W_Valideren aanvraag-COMPLETE occurs, the activity O_ACCEPTED_COMPLETE should occur after W_Valideren aanvraag-COMPLETE.
 R6: If the activity O_SENT_BACK_COMPLETEoccurs, the activity W_Valideren aanvraag-COMPLETE should occur after O_SENT_BACK_COMPLETE.
