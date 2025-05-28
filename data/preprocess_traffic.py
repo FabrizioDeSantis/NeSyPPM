@@ -19,6 +19,7 @@ def create_test_set(data):
     filtered_values_r2 = [v for v, l, r in zip(unique_groups, labels, labels_r2) if (r == 1 and l == 1)]
     filtered_values_r3 = [v for v, l, r in zip(unique_groups, labels, labels_r3) if (r == 1 and l == 1)]
 
+    compliant_ids = list(set(filtered_values_r1 + filtered_values_r2 + filtered_values_r3))
     filtered_values_nor = [v for v, l, r1, r2, r3 in zip(unique_groups, labels, labels_r1, labels_r2, labels_r3) if (r1 == 0 and r2 == 0 and r3 == 0 and l == 0)]
     filtered_values_r1_training = random.sample(filtered_values_r1, len(filtered_values_r1) // 2)
     filtered_values_r1_test = [x for x in filtered_values_r1 if x not in filtered_values_r1_training]
@@ -26,8 +27,6 @@ def create_test_set(data):
     filtered_values_r2_test = [x for x in filtered_values_r2 if x not in filtered_values_r2_training]
     filtered_values_r3_training = random.sample(filtered_values_r3, len(filtered_values_r3) // 2)
     filtered_values_r3_test = [x for x in filtered_values_r3 if x not in filtered_values_r3_training]
-
-    print("Number of compliant rules in the training set: ", len(list(set(filtered_values_r1_training + filtered_values_r2_training + filtered_values_r3_training))))
 
     filtered_values = filtered_values_r1_test + filtered_values_r2_test + filtered_values_r3_test + filtered_values_nor
     filtered_values = list(set(filtered_values))  # Remove duplicates
@@ -41,8 +40,13 @@ def create_test_set(data):
 
     # Remove the selected test IDs from the original list
     training_ids = [x for x in unique_groups if x not in test_ids]
-    training_ids = training_ids + filtered_values_r1_training + filtered_values_r2_training + filtered_values_r3_training
+    #training_ids = training_ids + filtered_values_r1_training + filtered_values_r2_training + filtered_values_r3_training
     training_ids = list(set(training_ids))  # Remove duplicates
+
+    compliant_test_ids = [x for x in test_ids if x in compliant_ids]
+    compliant_training_ids = [x for x in training_ids if x in compliant_ids]
+    print("Number of compliant traces in training set: ", len(compliant_training_ids))
+    print("Number of compliant traces in test set: ", len(compliant_test_ids))
 
     return training_ids, test_ids
 
