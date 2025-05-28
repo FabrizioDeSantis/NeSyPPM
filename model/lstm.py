@@ -12,11 +12,10 @@ class ModelConfig:
     hidden_size: int
     num_layers: int
     dropout_rate: float = 0.1
-    sequence_length: int = 13 # sepsis
-    # sequence_length: int = 20 # bpi17
-    #sequence_length: int = 40 # bpi12
-    #sequence_length: int = 13 # sepsis
-    #sequence_length: int = 20 # traffic_fines
+    # sequence_length: int = 13 # sepsis
+    sequence_length: int = 20 # bpi17
+    # sequence_length: int = 40 # bpi12
+    # sequence_length: int = 10 # traffic_fines
     learning_rate: float = 0.001
     num_features: int = 4
     num_epochs: int = 100
@@ -57,14 +56,14 @@ class LSTMModel(nn.Module):
             embeddings_list.append(self.embeddings[name](feature_data))
             
         #Process numerical features
-        # SEPSIS
-        for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
-            index = self.feature_names.index(name)
-            index = index * seq_len
-            end_idx = index + seq_len
-            feature_data = x[:, index:end_idx]
-            numerical_features.append(feature_data)
-        # BPI12
+        # sepsis
+        # for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
+        #     index = self.feature_names.index(name)
+        #     index = index * seq_len
+        #     end_idx = index + seq_len
+        #     feature_data = x[:, index:end_idx]
+        #     numerical_features.append(feature_data)
+        # bpi12
         # index = self.feature_names.index("case:AMOUNT_REQ")
         # index = index * seq_len
         # end_idx = index + seq_len
@@ -78,12 +77,12 @@ class LSTMModel(nn.Module):
         #     feature_data = x[:, index:end_idx]
         #     numerical_features.append(feature_data)
         # bpi17
-        # for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
-        #     index = self.feature_names.index(name)
-        #     index = index * seq_len
-        #     end_idx = index + seq_len
-        #     feature_data = x[:, index:end_idx]
-        #     numerical_features.append(feature_data)
+        for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
+            index = self.feature_names.index(name)
+            index = index * seq_len
+            end_idx = index + seq_len
+            feature_data = x[:, index:end_idx]
+            numerical_features.append(feature_data)
 
         numerical_features = torch.stack(numerical_features, dim=2)
         output = torch.cat(embeddings_list + [numerical_features], dim=2)
@@ -141,12 +140,13 @@ class LSTMModelNext(nn.Module):
             
         #Process numerical features
         # sepsis
-        for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
-            index = self.feature_names.index(name)
-            index = index * seq_len
-            end_idx = index + seq_len
-            feature_data = x[:, index:end_idx]
-            numerical_features.append(feature_data)
+        # for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
+        #     index = self.feature_names.index(name)
+        #     index = index * seq_len
+        #     end_idx = index + seq_len
+        #     feature_data = x[:, index:end_idx]
+        #     numerical_features.append(feature_data)
+        # bpi12
         # index = self.feature_names.index("case:AMOUNT_REQ")
         # index = index * seq_len
         # end_idx = index + seq_len
@@ -159,13 +159,13 @@ class LSTMModelNext(nn.Module):
         #     end_idx = index + seq_len
         #     feature_data = x[:, index:end_idx]
         #     numerical_features.append(feature_data)
-        # # bpi17
-        # for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
-        #     index = self.feature_names.index(name)
-        #     index = index * seq_len
-        #     end_idx = index + seq_len
-        #     feature_data = x[:, index:end_idx]
-        #     numerical_features.append(feature_data)
+        # bpi17
+        for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
+            index = self.feature_names.index(name)
+            index = index * seq_len
+            end_idx = index + seq_len
+            feature_data = x[:, index:end_idx]
+            numerical_features.append(feature_data)
 
         numerical_features = torch.stack(numerical_features, dim=2)
         output = torch.cat(embeddings_list + [numerical_features], dim=2)
@@ -208,7 +208,7 @@ class LSTMModelA(nn.Module):
             feature: nn.Embedding(vocab_size + 1, config.hidden_size, padding_idx=0)
             for feature, vocab_size in vocab_sizes.items()
         })
-        lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings)) + 3  # +2 for numerical features
+        lstm_input_size = (config.hidden_size * len(self.embeddings)) + (len(feature_names) - len(self.embeddings)) + 3# +2 for numerical features
         self.lstm = nn.LSTM(
             input_size=lstm_input_size,
             hidden_size=config.hidden_size,
@@ -231,15 +231,28 @@ class LSTMModelA(nn.Module):
             end_idx = index + seq_len
             feature_data = x[:, index:end_idx].long()
             embeddings_list.append(self.embeddings[name](feature_data))
-            
+        
         # Process numerical features
         # sepsis
-        for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid', "rule_2"]:
-            index = self.feature_names.index(name)
-            index = index * seq_len
-            end_idx = index + seq_len
-            feature_data = x[:, index:end_idx]
-            numerical_features.append(feature_data)
+        # for name in ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']:
+        #     index = self.feature_names.index(name)
+        #     index = index * seq_len
+        #     end_idx = index + seq_len
+        #     feature_data = x[:, index:end_idx]
+        #     numerical_features.append(feature_data)
+        # numerical_features.append(x[:, 364:377])
+        # numerical_features.append(x[:, 377:390])
+        # numerical_features.append(x[:, 390:403])
+        # bpi12
+        # index = self.feature_names.index("case:AMOUNT_REQ")
+        # index = index * seq_len
+        # end_idx = index + seq_len
+        # feature_data = x[:, index:end_idx]
+        # numerical_features.append(feature_data)
+        # numerical_features.append(x[:, 120:160])
+        # numerical_features.append(x[:, 160:200])
+        # numerical_features.append(x[:, 200:240])
+        # traffic
         # for name in ["expense", "amount", "paymentAmount"]:
         #     index = self.feature_names.index(name)
         #     index = index * seq_len
@@ -250,16 +263,15 @@ class LSTMModelA(nn.Module):
         # numerical_features.append(x[:, 120:130])
         # numerical_features.append(x[:, 130:140])
         # # bpi17
-        # for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
-        #     index = self.feature_names.index(name)
-        #     index = index * seq_len
-        #     end_idx = index + seq_len
-        #     feature_data = x[:, index:end_idx]
-        #     numerical_features.append(feature_data)
-        # numerical_features.append(x[:, 240:260])
-        # numerical_features.append(x[:, 260:280])
-        # numerical_features.append(x[:, 280:300])
-
+        for name in ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]:
+            index = self.feature_names.index(name)
+            index = index * seq_len
+            end_idx = index + seq_len
+            feature_data = x[:, index:end_idx]
+            numerical_features.append(feature_data)
+        numerical_features.append(x[:, 240:260])
+        numerical_features.append(x[:, 260:280])
+        numerical_features.append(x[:, 280:300])
         numerical_features = torch.stack(numerical_features, dim=2)
         output = torch.cat(embeddings_list + [numerical_features], dim=2)
         # Concatenate all features
