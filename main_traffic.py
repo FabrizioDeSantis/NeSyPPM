@@ -12,7 +12,7 @@ from collections import defaultdict, Counter
 from data import preprocess_sepsis
 from data import preprocess_bpi12
 from data import preprocess_traffic
-from data.dataset import NeSyDataset, ModelConfig, TrafficDataset
+from data.dataset import NeSyDataset, ModelConfig
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -43,8 +43,8 @@ def get_args():
     parser.add_argument("--hidden_size", type=int, default=128, help="Hidden size of the LSTM model")
     parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the LSTM model")
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for the LSTM model")
-    parser.add_argument("--num_epochs", type=int, default=15, help="Number of epochs for training")
-    parser.add_argument("--num_epochs_nesy", type=int, default=15, help="Number of epochs for training LTN model")
+    parser.add_argument("--num_epochs", type=int, default=2, help="Number of epochs for training")
+    parser.add_argument("--num_epochs_nesy", type=int, default=2, help="Number of epochs for training LTN model")
     # training configuration
     parser.add_argument("--train_vanilla", type=bool, default=True, help="Train vanilla LSTM model")
     parser.add_argument("--train_nesy", type=bool, default=True, help="Train LTN model")
@@ -226,7 +226,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w/o knowledge")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn", scalers, dataset, rule_penalty, rule_payment, rule_amount)
+accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn.append(accuracy)
 print("F1 Score:", f1score)
@@ -341,7 +341,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (A)")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_penalty, rule_payment, rule_amount)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_A.append(accuracy)
 print("F1 Score:", f1score)
@@ -401,7 +401,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (AB)")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_penalty, rule_payment, rule_amount)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_AB.append(accuracy)
 print("F1 Score:", f1score)
@@ -529,7 +529,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge (AC)")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_penalty, rule_payment, rule_amount)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_AC.append(accuracy)
 print("F1 Score:", f1score)
@@ -596,7 +596,7 @@ for epoch in range(args.num_epochs_nesy):
 
 lstm.eval()
 print("Metrics LTN w knowledge")
-accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset, rule_penalty, rule_payment, rule_amount)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_ABC.append(accuracy)
 print("F1 Score:", f1score)
