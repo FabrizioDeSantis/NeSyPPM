@@ -351,12 +351,12 @@ for epoch in range(args.num_epochs_nesy):
         optimizer.zero_grad()
         rule_1_res = rule_1(x).detach()
         rule_2_res = rule_2(x).detach()
-        rule_crp_atb_res = rule_crp_atb(x)
-        rule_crp_100_res = rule_crp_100(x)
+        rule_crp_atb_res = rule_crp_atb(x).detach()
+        rule_crp_100_res = rule_crp_100(x).detach()
         rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
-        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 13)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 13)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 13)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         formulas = []
@@ -375,12 +375,12 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    print(" epoch %d | loss %.4f | Train Sat %.3f | Train Acc %.3f "
-                %(epoch, train_loss, compute_satisfaction_level(train_loader), compute_accuracy(train_loader, lstm, device)))
+    print(" epoch %d | loss %.4f"
+                %(epoch, train_loss))
 
 lstm.eval()
 print("Metrics LTN w knowledge (A)")
-accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_A.append(accuracy)
 print("F1 Score:", f1score)
@@ -437,12 +437,12 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    print(" epoch %d | loss %.4f | Train Sat %.3f | Train Acc %.3f "
-                %(epoch, train_loss, compute_satisfaction_level(train_loader), compute_accuracy(train_loader, lstm, device)))
+    print(" epoch %d | loss %.4f "
+                %(epoch, train_loss))
 
 lstm.eval()
 print("Metrics LTN w knowledge (AB)")
-accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_AB.append(accuracy)
 print("F1 Score:", f1score)
@@ -500,12 +500,12 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    print(" epoch %d | loss %.4f | Train Sat %.3f | Train Acc %.3f "
-                %(epoch, train_loss, compute_satisfaction_level(train_loader), compute_accuracy(train_loader, lstm, device)))
+    print(" epoch %d | loss %.4f"
+                %(epoch, train_loss))
 
 lstm.eval()
 print("Metrics LTN w knowledge and parallel constraints")
-accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_BC.append(accuracy)
 print("F1 Score:", f1score)
@@ -539,9 +539,9 @@ for epoch in range(args.num_epochs_nesy):
         rule_crp_atb_res = rule_crp_atb(x)
         rule_crp_100_res = rule_crp_100(x)
         rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
-        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 13)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 13)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 13)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         formulas = []
@@ -565,12 +565,12 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    print(" epoch %d | loss %.4f | Train Sat %.3f | Train Acc %.3f "
-                %(epoch, train_loss, compute_satisfaction_level(train_loader), compute_accuracy(train_loader, lstm, device)))
+    print(" epoch %d | loss %.4f"
+                %(epoch, train_loss))
 
 lstm.eval()
 print("Metrics LTN w knowledge (AC)")
-accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_AC.append(accuracy)
 print("F1 Score:", f1score)
@@ -604,9 +604,9 @@ for epoch in range(args.num_epochs_nesy):
         rule_crp_atb_res = rule_crp_atb(x)
         rule_crp_100_res = rule_crp_100(x)
         rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
-        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, 13)], dim=1)
+        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, 13)], dim=1)
+        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, 13)], dim=1)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         formulas = []
@@ -633,12 +633,12 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    print(" epoch %d | loss %.4f | Train Sat %.3f | Train Acc %.3f "
-                %(epoch, train_loss, compute_satisfaction_level(train_loader), compute_accuracy(train_loader, lstm, device)))
+    print(" epoch %d | loss %.4f"
+                %(epoch, train_loss))
 
 lstm.eval()
 print("Metrics LTN w knowledge")
-accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
+accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
 print("Accuracy:", accuracy)
 metrics_ltn_ABC.append(accuracy)
 print("F1 Score:", f1score)
