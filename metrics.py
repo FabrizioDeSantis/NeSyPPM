@@ -429,6 +429,7 @@ def compute_accuracy_a(loader, model, device, rule_1, rule_2, rule_3):
 def compute_metrics_fa(loader, model, device, mode, scalers, dataset):
     ### SEPSIS RULES
     if dataset == "sepsis":
+        rule_lact = lambda x: (x[..., 351:364] > scalers["LacticAcid"].transform([[2]])[0][0]).any(dim=1)
         rule_crit = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
         rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
         rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
@@ -446,9 +447,10 @@ def compute_metrics_fa(loader, model, device, mode, scalers, dataset):
         rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
     ###########
     # BPI17 RULES
-    rule_1 = lambda x: ((x[:, 140] < scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, :20] == 11).any(dim=1) & (x[:, 40:60] != 0).any(dim=1))
-    rule_2 = lambda x: (x[:, 40:60] == 0).all(dim=1) & (x[:, :20] == 11).any(dim=1)
-    rule_3 = lambda x: (x[:, 140] > scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, 20:40] == 6).any(dim=1)
+    if dataset == "bpi17":
+        rule_1 = lambda x: ((x[:, 140] < scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, :20] == 11).any(dim=1) & (x[:, 40:60] != 0).any(dim=1))
+        rule_2 = lambda x: (x[:, 40:60] == 0).all(dim=1) & (x[:, :20] == 11).any(dim=1)
+        rule_3 = lambda x: (x[:, 140] > scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, 20:40] == 6).any(dim=1)
     y_pred = []
     y_true = []
     compliance = 0
@@ -456,28 +458,42 @@ def compute_metrics_fa(loader, model, device, mode, scalers, dataset):
     num_constraints = 0
     for data, labels in loader:
         data = data.to(device)
-        rule_1_res = rule_1(data).detach()
-        rule_2_res = rule_2(data).detach()
-        rule_3_res = rule_3(data).detach()
-        data = torch.cat([data, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        data = torch.cat([data, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
-        data = torch.cat([data, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        if dataset == "bpi17":
+            rule_1_res = rule_1(data).detach()
+            rule_2_res = rule_2(data).detach()
+            rule_3_res = rule_3(data).detach()
+            data = torch.cat([data, rule_1_res.unsqueeze(1).repeat(1, 20)], dim=1)
+            data = torch.cat([data, rule_2_res.unsqueeze(1).repeat(1, 20)], dim=1)
+            data = torch.cat([data, rule_3_res.unsqueeze(1).repeat(1, 20)], dim=1)
+        if dataset == "sepsis":
+            rule_lact_res = rule_lact(data).detach()
+            rule_crit_res= rule_crit(data).detach()
+            rule_crp_atb_res = rule_crp_atb(data).detach()
+            rule_crp_100_res = rule_crp_100(data).detach()
+            rule_3_res = torch.logical_and(rule_crp_atb_res, rule_crp_100_res).detach()
+            data = torch.cat([data, rule_lact_res.unsqueeze(1).repeat(1, 13)], dim=1)
+            data = torch.cat([data, rule_crit_res.unsqueeze(1).repeat(1, 13)], dim=1)
+            data = torch.cat([data, rule_3_res.unsqueeze(1).repeat(1, 13)], dim=1)
+        elif dataset == "bpi12":
+            rule_amount_1_res = rule_amount_1(data).detach()
+            rule_amount_2_res = rule_amount_2(data).detach()
+            rule_amount_3_res = rule_amount_3(data).detach()
+            rule_resource_1_res = rule_resource_1(data).detach()
+            rule_resource_2_res = rule_resource_2(data).detach()
+            rule_2_res = torch.logical_and(rule_amount_2_res, rule_amount_3_res).detach()
+            rule_3_res = torch.logical_or(rule_resource_1_res, rule_resource_2_res).detach()
+            data = torch.cat([data, rule_amount_1_res.unsqueeze(1).repeat(1, 40)], dim=1)
+            data = torch.cat([data, rule_2_res.unsqueeze(1).repeat(1, 40)], dim=1)
+            data = torch.cat([data, rule_3_res.unsqueeze(1).repeat(1, 40)], dim=1)
+        elif dataset == "traffic_fines":
+            rule_penalty_res = rule_penalty(data).detach()
+            rule_payment_res = rule_payment(data).detach()
+            rule_amount_res = rule_amount(data).detach()
+            data = torch.cat([data, rule_penalty_res.unsqueeze(1).repeat(1, 10)], dim=1)
+            data = torch.cat([data, rule_payment_res.unsqueeze(1).repeat(1, 10)], dim=1)
+            data = torch.cat([data, rule_amount_res.unsqueeze(1).repeat(1, 10)], dim=1)
         predictions = model(data).detach().cpu().numpy()
         predictions = np.where(predictions > 0.5, 1., 0.).flatten()
-        if dataset == "sepsis":
-            rule_crit_res= rule_crit(data).detach().cpu().numpy()
-            rule_crp_atb_res = rule_crp_atb(data).detach().cpu().numpy()
-            rule_crp_100_res = rule_crp_100(data).detach().cpu().numpy()
-        elif dataset == "bpi12":
-            rule_amount_1_res = rule_amount_1(data).detach().cpu().numpy()
-            rule_amount_2_res = rule_amount_2(data).detach().cpu().numpy()
-            rule_amount_3_res = rule_amount_3(data).detach().cpu().numpy()
-            rule_resource_1_res = rule_resource_1(data).detach().cpu().numpy()
-            rule_resource_2_res = rule_resource_2(data).detach().cpu().numpy()
-        elif dataset == "traffic_fines":
-            rule_penalty_res = rule_penalty(data).detach().cpu().numpy()
-            rule_payment_res = rule_payment(data).detach().cpu().numpy()
-            rule_amount_res = rule_amount(data).detach().cpu().numpy()
         for i in range(len(labels)):
             y_pred.append(predictions[i])
             y_true.append(labels[i].cpu())
@@ -629,7 +645,7 @@ def compute_metrics(loader, model, device, mode, scalers, dataset):
                     num_constraints += 1
                     if predictions[i] == 1:
                         satisfied_constraints += 1
-                if rule_crp_atb_res[i] == 1 and rule_crp_100_res[i] == 1 and labels[i] == 0:
+                if rule_crp_atb_res[i] == 1 and rule_crp_100_res[i] == 1 and labels[i] == 1:
                     num_constraints += 1
                     if predictions[i] == 1:
                         satisfied_constraints += 1
