@@ -417,6 +417,7 @@ metrics_ltn_AB.append(compliance)
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names)
 lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
+lstm_imm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 #has_act = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 5).any(dim=1))
 has_act_1 = ltn.Function(func = lambda x: torch.tensor(x[:, :10] == 3).any(dim=1))
 has_act_2 = ltn.Function(func = lambda x: torch.tensor(x[:, :10] == 10).any(dim=1))
@@ -425,8 +426,9 @@ Notification = ltn.Constant(torch.tensor([0, 1, 0]))
 Payment = ltn.Constant(torch.tensor([0, 0, 1]))
 P = ltn.Predicate(lstm).to(device)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
+ImmediateNext = ltn.Predicate(LogitsToPredicate(lstm_imm_next)).to(device)
 SatAgg = ltn.fuzzy_ops.SatAgg()
-params = list(P.parameters()) + list(Next.parameters())
+params = list(P.parameters()) + list(Next.parameters() + list(ImmediateNext.parameters()))
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
@@ -450,8 +452,8 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :10] == 1).any(dim=1)),
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, :10] == 7).any(dim=1) & (x.value[:, 100:110].max(dim=1).values < x.value[:, 90]))),
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 90] > scalers["amount"].transform([[400]])[0][0])),
-            Forall(x_All, And(has_act_1(x_All), Next(x_All, SendFine))),
-            Forall(x_All, And(has_act_2(x_All), Next(x_All, Notification))),
+            Forall(x_All, And(has_act_1(x_All), ImmediateNext(x_All, SendFine))),
+            Forall(x_All, And(has_act_2(x_All), ImmediateNext(x_All, Notification))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, Payment))),
         ])
         sat_agg = SatAgg(*formulas)
@@ -484,9 +486,11 @@ lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
 lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
+lstm_imm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
+ImmediateNext = ltn.Predicate(LogitsToPredicate(lstm_imm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
-params = list(P.parameters()) + list(Next.parameters())
+params = list(P.parameters()) + list(Next.parameters() + list(ImmediateNext.parameters()))
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
@@ -513,8 +517,8 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            Forall(x_All, And(has_act_1(x_All), Next(x_All, SendFine))),
-            Forall(x_All, And(has_act_2(x_All), Next(x_All, Notification))),
+            Forall(x_All, And(has_act_1(x_All), ImmediateNext(x_All, SendFine))),
+            Forall(x_All, And(has_act_2(x_All), ImmediateNext(x_All, Notification))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, Payment))),
         ])
         sat_agg = SatAgg(*formulas)
@@ -547,9 +551,11 @@ lstm = LSTMModelA(vocab_sizes, config, 1, feature_names)
 P = ltn.Predicate(lstm).to(device)
 lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
+lstm_imm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
+ImmediateNext = ltn.Predicate(LogitsToPredicate(lstm_imm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
-params = list(P.parameters()) + list(Next.parameters())
+params = list(P.parameters()) + list(Next.parameters() + list(ImmediateNext.parameters()))
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
@@ -580,8 +586,8 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :10] == 1).any(dim=1)),
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, :10] == 7).any(dim=1) & (x.value[:, 100:110].max(dim=1).values < x.value[:, 90]))),
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, 90] > scalers["amount"].transform([[400]])[0][0])),
-            Forall(x_All, And(has_act_1(x_All), Next(x_All, SendFine))),
-            Forall(x_All, And(has_act_2(x_All), Next(x_All, Notification))),
+            Forall(x_All, And(has_act_1(x_All), ImmediateNext(x_All, SendFine))),
+            Forall(x_All, And(has_act_2(x_All), ImmediateNext(x_All, Notification))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, Payment))),
         ])
         sat_agg = SatAgg(*formulas)
