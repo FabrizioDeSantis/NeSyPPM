@@ -39,7 +39,7 @@ def get_args():
     parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the LSTM model")
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for the LSTM model")
     parser.add_argument("--num_epochs", type=int, default=15, help="Number of epochs for training")
-    parser.add_argument("--num_epochs_nesy", type=int, default=15, help="Number of epochs for training LTN model")
+    parser.add_argument("--num_epochs_nesy", type=int, default=10, help="Number of epochs for training LTN model")
     # training configuration
     parser.add_argument("--train_vanilla", type=bool, default=True, help="Train vanilla LSTM model")
     parser.add_argument("--train_nesy", type=bool, default=True, help="Train LTN model")
