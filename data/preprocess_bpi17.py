@@ -4,7 +4,7 @@ import pandas as pd
 import random
 
 def create_test_set(data):
-    random.seed(33)
+    random.seed(42)
     grouped = data.groupby("case:concept:name")
     unique_groups = list(grouped.groups.keys())  # Get the unique group IDs
     labels = data.groupby("case:concept:name")["label"].first().to_list()
@@ -132,6 +132,8 @@ def preprocess_eventlog(data, dataset_size=None):
     print("A_Accepted code: ", data["concept:name"].cat.categories.get_loc("A_Accepted") + 1)
     print("O_Create Offer code: ", data["concept:name"].cat.categories.get_loc("O_Create Offer") + 1)
     print("A_Submitted code: ", data["concept:name"].cat.categories.get_loc("A_Submitted") + 1)
+    print("W_Validate application code: ", data["concept:name"].cat.categories.get_loc("W_Validate application") + 1)
+    print("A_Complete code: ", data["concept:name"].cat.categories.get_loc("A_Complete") + 1)
     data["concept:name"] = data["concept:name"].cat.codes + 1
     vocab_sizes["concept:name"] = data["concept:name"].max()
 
