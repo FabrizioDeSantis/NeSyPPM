@@ -45,7 +45,7 @@ R2: If the activity Add penalty occurs, then the fine should be sent for credit 
     \/x (HasActivity(x, "Add penalty") -> SendToCreditCollection(x))
 R3: If the amount of the fine is greater than 400, then the fine should be sent for credit collection. 
     \/x (FineAmount(x) > 400 -> SendToCreditCollection(x))
-R4: If the activity Create Fine occurs, the activity Send Fine should occur after Create Fine.
-R5: If the activity Send Fine occurs, the activity Insert Fine Notification should occur after Send Fine.
+R4: The activity Send Fine should immeditely follow the activity Create Fine.
+R5: The activity Insert Fine Notification should immeditely follow the activity Send Fine.
 R6: If the activity Send Fine occurs, the activity Payment Notification should occur after Send Fine.
 '''
