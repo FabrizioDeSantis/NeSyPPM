@@ -9,7 +9,7 @@ R2: Patients with Tachypnea, Suspected Infection, and Critical Heart Rate, shoul
     \-/ x (Tachypnea(x) /\ SuspectedInfection(x) /\ CriticalHeartRate(x) -> ICU(x))
 R3: Patients with CRP activity followed by IV Antibiotics and with CRP value > 100 should be admitted to the ICU. 
     \-/ x (CRP(x) /\ IVAntibiotics(x) /\ CRPValue(x) > 100 -> ICU(x))
-R4: If the activity ERTriage occurs, the activity ERSepsisTriage should occur after ERTriage.
+R4: The activity ERSepsisTriage should immeditely follow the activity ERTriage.
 R5: If the activity ERSepsisTriage occurs, the activity IV Antibiotics should occur after ERSepsisTriage.
 R6: If the activity ERSepsisTriage occurs, the activity IV Liquid should occur after ERSepsisTriage.
 '''

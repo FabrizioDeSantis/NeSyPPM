@@ -458,10 +458,12 @@ metrics_ltn_AB.append(compliance)
 
 lstm = LSTMModel(vocab_sizes, config, 1, feature_names)
 lstm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
+lstm_imm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 has_act_1 = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 5).any(dim=1))
 has_act_2 = ltn.Function(func= lambda x: torch.tensor(x[:, 104:117] == 4).any(dim=1))
 P = ltn.Predicate(lstm).to(device)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
+ImmediateNext = ltn.Predicate(LogitsToPredicate(lstm_imm_next)).to(device)
 SatAgg = ltn.fuzzy_ops.SatAgg()
 params = list(P.parameters()) + list(Next.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
@@ -488,7 +490,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(f2(x_All), P(x_All))),
             Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All))),
-            Forall(x_All, And(has_act_1(x_All), Next(x_All, ERSepsisTriage))),
+            Forall(x_All, And(has_act_1(x_All), ImmediateNext(x_All, ERSepsisTriage))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, Antibiotics))),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, Liquid))),
 
@@ -554,7 +556,7 @@ for epoch in range(args.num_epochs_nesy):
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
         formulas.extend([
-            Forall(x_All, And(has_act_1(x_All), Next(x_All, ERSepsisTriage))),
+            Forall(x_All, And(has_act_1(x_All), ImmediateNext(x_All, ERSepsisTriage))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, Antibiotics))),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, Liquid))),
         ])
@@ -622,7 +624,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(f2(x_All), P(x_All))),
             Forall(x_All, Implies(And(check_presence_crp_atb(x_All), check_crp_100(x_All)), P(x_All))),
-            Forall(x_All, And(has_act_1(x_All), Next(x_All, ERSepsisTriage))),
+            Forall(x_All, And(has_act_1(x_All), ImmediateNext(x_All, ERSepsisTriage))),
             Forall(x_All, And(has_act_2(x_All), Next(x_All, Antibiotics))),
             Forall(x_All, And(has_act_1(x_All), Next(x_All, Liquid))),
         ])
