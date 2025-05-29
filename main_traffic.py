@@ -428,7 +428,7 @@ P = ltn.Predicate(lstm).to(device)
 Next = ltn.Predicate(LogitsToPredicate(lstm_next)).to(device)
 ImmediateNext = ltn.Predicate(LogitsToPredicate(lstm_imm_next)).to(device)
 SatAgg = ltn.fuzzy_ops.SatAgg()
-params = list(P.parameters()) + list(Next.parameters() + list(ImmediateNext.parameters()))
+params = list(P.parameters()) + list(Next.parameters()) + list(ImmediateNext.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
@@ -490,7 +490,7 @@ lstm_imm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 ImmediateNext = ltn.Predicate(LogitsToPredicate(lstm_imm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
-params = list(P.parameters()) + list(Next.parameters() + list(ImmediateNext.parameters()))
+params = list(P.parameters()) + list(Next.parameters()) + list(ImmediateNext.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
@@ -555,7 +555,7 @@ lstm_imm_next = LSTMModelNext(vocab_sizes, config, 3, feature_names)
 ImmediateNext = ltn.Predicate(LogitsToPredicate(lstm_imm_next)).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
-params = list(P.parameters()) + list(Next.parameters() + list(ImmediateNext.parameters()))
+params = list(P.parameters()) + list(Next.parameters()) + list(ImmediateNext.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
