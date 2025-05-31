@@ -11,8 +11,8 @@ class ModelConfig:
     hidden_size: int
     num_layers: int
     dropout_rate: float = 0.1
-    sequence_length: int = 13 # sepsis
-    # sequence_length: int = 20 # bpi17
+    # sequence_length: int = 13 # sepsis
+    sequence_length: int = 20 # bpi17
     #sequence_length: int = 40 # bpi12
     #sequence_length: int = 13 # sepsis
     #sequence_length: int = 20 # traffic_fines
